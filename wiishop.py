@@ -6,14 +6,10 @@ import subprocess
 import sys
 import time
 
-if len(sys.argv) != 2:
-    print "Usage: wiishop.py <output file>"
-    exit()
 
-"""Pack integers to specific type."""
+"""Packs integers to specific type."""
 
 # Unsigned integers
-
 
 def u8(data):
     if data < 0 or data > 255:
@@ -47,7 +43,6 @@ def u64(data):
 
 # Signed integers
 
-
 def s8(data):
     if data < -128 or data > 128:
         data = 0
@@ -65,29 +60,21 @@ def s32(data):
         data = 0
     return struct.pack(">i", data)
 
+
 dictionaries = []
 
 
-"""This is a function used to count offsets."""
+def offset_count():
+    """Counts offsets."""
+    return u32(sum(len(values)
+                   for dictionary in dictionaries
+                   for values in dictionary.values()
+                   if values) - 8)
 
-
-def offset_count(): return u32(
-    sum(len(values) for dictionary in dictionaries for values in dictionary.values() if values) - 8)
 
 with open("config.json", "rb") as f:
     config = json.load(f)
 
-def main():
-    print "Wii Shop Channel Banner Maker"
-
-    csdf = make_csdf()
-    make_dcvd()
-    make_dltd()
-    make_crmd()
-
-    csdf["length"] = offset_count()
-
-    write_dictionary()
 
 def make_csdf():
     csdf = collections.OrderedDict()
@@ -98,6 +85,7 @@ def make_csdf():
 
     return csdf
 
+
 def make_dcvd():
     dcvd = collections.OrderedDict()
     dictionaries.append(dcvd)
@@ -107,6 +95,7 @@ def make_dcvd():
     dcvd["timestamp"] = u64(time.time() * 100)
 
     return dcvd
+
 
 def make_dltd():
     dltd = collections.OrderedDict()
@@ -119,6 +108,7 @@ def make_dltd():
     dltd["day"] = u32(datetime.datetime.now().day)
 
     return dltd
+
 
 def make_crmd():
     crmd = collections.OrderedDict()
@@ -133,6 +123,7 @@ def make_crmd():
         crmd.update(dtpl)
         crmd["length_%s" % i] = u32(sum(len(values) for dictionary in [dmsg, dtpl] for values in dictionary.values() if values))
 
+
 def make_dmsg(i):
     dmsg = collections.OrderedDict()
 
@@ -141,6 +132,7 @@ def make_dmsg(i):
     dmsg["msg_%s" % i] = config["msg_%s" % i].encode("utf-16be")
 
     return dmsg
+
 
 def make_dtpl(i):
     dtpl = collections.OrderedDict()
@@ -158,13 +150,31 @@ def make_dtpl(i):
 
     return dtpl
 
-"""Write everything to the file."""
 
 def write_dictionary():
+    """Write everything to the file."""
     for dictionary in dictionaries:
         for values in dictionary.values():
             with open(sys.argv[1] + "-1", "ab") as dest_file:
                 dest_file.write(values)
+
+
+def main():
+    if len(sys.argv) != 2:
+        print "Usage: wiishop.py <output file>"
+        exit()
+    
+    print "Wii Shop Channel Banner Maker"
+
+    csdf = make_csdf()
+    make_dcvd()
+    make_dltd()
+    make_crmd()
+
+    csdf["length"] = offset_count()
+
+    write_dictionary()
+
 
 if __name__ == "__main__":
     main()
